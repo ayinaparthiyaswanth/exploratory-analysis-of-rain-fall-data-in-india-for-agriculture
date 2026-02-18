@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request
 import pickle
 import numpy as np
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -15,12 +16,26 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Get values from HTML
+    # 1. Get values from HTML
     features = [float(x) for x in request.form.values()]
-    final_features = scaler.transform(imputer.transform([np.array(features)]))
-    prediction = model.predict(final_features)
     
-    return render_template('chance.html') if prediction[0] == 1 else render_template('noChance.html')
+    # 2. Convert to DataFrame (This fixes the 'SimpleImputer' 1.7.2 error)
+    # Note: Ensure these names match your training data exactly
+    cols = ['Temperature', 'Humidity'] 
+    feature_df = pd.DataFrame([features], columns=cols)
+
+    # 3. Process the data
+    imputed_data = imputer.transform(feature_df)
+    scaled_data = scaler.transform(imputed_data)
+    
+    # 4. Make prediction
+    prediction = model.predict(scaled_data)
+
+    # 5. Redirect based on result
+    if prediction[0] == 1:
+        return render_template('chance.html')
+    else:
+        return render_template('noChance.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
